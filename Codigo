@@ -1,1 +1,104 @@
+% Definición de relaciones familiares
+father(carlos, andres).
+father(carlos, sofia).
+father(jorge, juan).
+father(miguel, pedro).
+mother(maria, juan).
+mother(luisa, pedro).
+sibling(carlos, jorge).
+sibling(jorge, emma).
+sibling(jorge, oliver).
+sibling(jorge, sophia).
+sibling(miguel, william).
+sibling(miguel, henry).
+cousin(carlos, miguel).
+cousin(miguel, lucas).
+cousin(miguel, mia).
+grandfather(george, jorge).
+grandfather(harry, jorge).
+grandmother(X, Y) :- mother(X, Z), father(Z, Y); mother(X, Z), mother(Z, Y).
+uncle(X, Y) :- sibling(X, Z), father(Z, Y).
 
+% Niveles de consanguinidad
+levelConsanguinity(X, Y, 1) :- father(X, Y); mother(X, Y).
+levelConsanguinity(X, Y, 1) :- father(Y, X); mother(Y, X).
+levelConsanguinity(X, Y, 2) :- sibling(X, Y).
+levelConsanguinity(X, Y, 2) :- grandfather(X, Y); grandmother(X, Y).
+levelConsanguinity(X, Y, 3) :- uncle(X, Y).
+levelConsanguinity(X, Y, 3) :- cousin(X, Y).
+
+distributeInheritance(Deceased, InheritanceTotal, Distribution) :-
+    % Obtener los herederos de cada nivel
+    findall(Person, levelConsanguinity(Deceased, Person, 1), Level1),
+    findall(Person, levelConsanguinity(Deceased, Person, 2), Level2),
+    findall(Person, levelConsanguinity(Deceased, Person, 3), Level3),
+    % Contar cuántas personas hay en cada nivel
+    length(Level1, Count1),
+    length(Level2, Count2),
+    length(Level3, Count3),
+    % Calcular los porcentajes para cada nivel
+    (Count1 > 0 -> Level1Percent is 50; Level1Percent is 0),
+    (Count2 > 0 -> Level2Percent is 30; Level2Percent is 0),
+    (Count3 > 0 -> Level3Percent is 20; Level3Percent is 0),
+    TotalPercent is Level1Percent + Level2Percent + Level3Percent,
+    % Ajustar los porcentajes si es necesario
+    (TotalPercent > 0 ->
+        AdjustFactor is 100 / TotalPercent,
+        Level1Share is Level1Percent * AdjustFactor,
+        Level2Share is Level2Percent * AdjustFactor,
+        Level3Share is Level3Percent * AdjustFactor
+    ;
+        Level1Share is 0, Level2Share is 0, Level3Share is 0
+    ),
+    % Distribuir la herencia entre los herederos de cada nivel
+    distribute(Level1, Level1Share, InheritanceTotal, Dist1),
+    distribute(Level2, Level2Share, InheritanceTotal, Dist2),
+    distribute(Level3, Level3Share, InheritanceTotal, Dist3),
+    % Combinar los resultados de todos los niveles
+    append(Dist1, Dist2, TempDist),
+    append(TempDist, Dist3, Distribution).
+
+% Distribución por persona
+distribute([], _, _, []).
+distribute(Heirs, Share, InheritanceTotal, Distribution) :-
+    length(Heirs, Length),
+    (Length > 0 -> 
+        IndividualShare is (Share * InheritanceTotal) / (100 * Length),
+        maplist(create_distribution(IndividualShare), Heirs, Distribution)
+    ; Distribution = []).
+
+create_distribution(Amount, Heir, Heir-Amount).
+
+% Casos de prueba
+test_case(1) :-
+    InheritanceTotal = 100000,
+    writeln('Caso 1:'),
+    writeln('Herencia total: $100,000'),
+    writeln('Herederos: dos hijos, un hermano, un primo'),
+    distributeInheritance(carlos, InheritanceTotal, Distribution),
+    writeln(Distribution),
+    nl.
+
+test_case(2) :-
+    InheritanceTotal = 250000,
+    writeln('Caso 2:'),
+    writeln('Herencia total: $250,000'),
+    writeln('Herederos: un hijo, dos abuelos, tres hermanos'),
+    distributeInheritance(jorge, InheritanceTotal, Distribution),
+    writeln(Distribution),
+    nl.
+
+test_case(3) :-
+    InheritanceTotal = 150000,
+    writeln('Caso 3:'),
+    writeln('Herencia total: $150,000'),
+    writeln('Herederos: una hija, dos hermanos, dos primos'),
+    distributeInheritance(miguel, InheritanceTotal, Distribution),
+    writeln(Distribution),
+    nl.
+
+% Ejecutar todos los casos de prueba
+run_all_tests :-
+    test_case(1),
+    test_case(2),
+    test_case(3).
